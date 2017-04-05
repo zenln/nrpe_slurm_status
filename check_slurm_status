@@ -1,0 +1,74 @@
+ Description simple script to check
+# slurm machine state.
+# Currently values for OK CRITICAL WARN are set on variables STATE_OK STATE_WARN and STATE_CRIT
+# Futuiteration will be set but in accordance to hiarchal list.
+###################################
+# Possible values for state
+# alloc, allocated, comp, completing,down,drain,drained, draining,err,error,fail,future,futr,idel,maint,mix,mixed,no_responsd,npc,perfctrs,power_down,power_up,resv,reserved,unk and unknowk
+# Normal: alloc, allocated, comp, completing, idel,mix,mixed.resv,reserved
+# Warning: down, drained,draning,err,error,maint,perfcts,npc,power_down,power_up,unk unknown
+# critical: fail,future,futr,no_respond
+
+#!/usr/bin/env bash
+
+# Declaring a associative array
+declare -A state
+declare ALLOK
+declare MESSAGE
+declare MSG
+declare -A MSG
+
+STATE_OK="alloc allocated comp completing idle mix mixed resv reserved"
+STATE_WAR="down* drn* drained draning err error maint perfcts npc power_down power_up unk unknown"
+STATE_CRIT="fail future futr no_respond"
+
+# State Associative array: The following is return status
+for i in $STATE_OK
+  do
+    state[$i]=0
+    MSG[$i]="OK"
+  done
+
+for i in $STATE_WAR
+  do
+    state[$i]=1
+    MSG[$i]="WARNING"
+  done
+
+for i in $STATE_CRIT
+  do
+   state[$i]=2
+    MSG[$i]="CRITICAL"
+  done
+
+# Specific sinfo switches
+# -t <with_state>
+# -R lists resason for down, drained, fail or failing state
+SINFO="/usr/bin/sinfo"
+#echo $(sinfo | head -n 1)
+STATELIST=$($SINFO|awk '{print $5}')
+
+# Add State list to message for all state of machine
+
+# Assuming everything is OK and seting return value ALLOK to 1 and switching while traversing through statelist
+ALLOK=0
+MESSAGE="OK - ALL OK"
+#echo $STATELIST
+for i in $STATELIST
+do
+        curstate=${state[$i]}
+        #echo for state $i the state array number is $curstate
+        if [ $(( $curstate )) -gt $(( $ALLOK )) ]
+        then
+                #echo Changing ALLOK to ${state[$i]}
+                ALLOK=${state[$i]}
+                MESSAGE="${MSG[$i]} - $i state machine present"
+        fi
+        #echo $i
+        #echo ${state[$i]}
+done
+echo $MESSAGE
+#echo $ALLOK
+exit $ALLOK
+
+
